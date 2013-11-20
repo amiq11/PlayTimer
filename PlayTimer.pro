@@ -13,8 +13,10 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        playtimerwindow.cpp
+        playtimerwindow.cpp \
+    processdetector.cpp
 
-HEADERS  += playtimerwindow.h
+HEADERS  += playtimerwindow.h \
+    processdetector.h
 
 FORMS    += playtimerwindow.ui
