@@ -28,8 +28,7 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     detector.setProcessName(name);
     // restore time
     playtime_sec = settings.value(name+"/second", 0).toULongLong();
-    QTime t (playtime_sec/3600, (playtime_sec/60)%60, playtime_sec%60);
-    QString str = t.toString("HH:mm:ss");
+    QString str = secToString(playtime_sec);
     ui->timeEdit->setText(str);
     // timer settings
     timer.setInterval(1000);
@@ -80,8 +79,11 @@ void PlayTimerWindow::changeName(QString name)
 
 QString PlayTimerWindow::secToString(quint64 sec)
 {
-    QTime t (sec/3600, (sec/60)%60, sec%60);
-    return t.toString("HH:mm:ss");
+    //QTime t (sec/3600, (sec/60)%60, sec%60);
+    return QString("%1:%2:%3")
+            .arg(sec/3600, 3, 10, QChar('0'))
+            .arg((sec/60)%60, 2, 10, QChar('0'))
+            .arg(sec%60, 2, 10, QChar('0'));
 }
 
 void PlayTimerWindow::on_lineEdit_editingFinished()
