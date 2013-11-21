@@ -20,3 +20,6 @@ HEADERS  += playtimerwindow.h \
     processdetector.h
 
 FORMS    += playtimerwindow.ui
+
+RESOURCES += \
+    resources.qrc

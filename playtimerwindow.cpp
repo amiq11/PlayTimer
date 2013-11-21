@@ -11,10 +11,15 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     settings("amiq11", "playtimer")
 {
     ui->setupUi(this);
-
+    createActions();
+    createTrayIcon();
+    connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
     connect(&timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     connect(&detector, SIGNAL(processStarted()), this, SLOT(startTimer()));
     connect(&detector, SIGNAL(processStopped()), this, SLOT(stopTimer()));
+    connect(&detector, SIGNAL(processStarted()), this, SLOT(showMessage()));
+    connect(&detector, SIGNAL(processStopped()), this, SLOT(showMessage()));
     connect(&detector, SIGNAL(targetChanged(QString)), ui->lineEdit, SLOT(setText(QString)));
     connect(&detector, SIGNAL(targetChanged(QString)), this, SLOT(changeName(QString)));
 
@@ -26,13 +31,23 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     QTime t (playtime_sec/3600, (playtime_sec/60)%60, playtime_sec%60);
     QString str = t.toString("HH:mm:ss");
     ui->timeEdit->setText(str);
+    // timer settings
     timer.setInterval(1000);
+
+    // start
+    trayIcon->show();
     detector.start();
 }
 
 PlayTimerWindow::~PlayTimerWindow()
 {
     delete ui;
+    delete openAction;
+    delete timeAction;
+    delete quitAction;
+    delete trayIconMenu;
+    delete trayIcon;
+
 }
 
 void PlayTimerWindow::startTimer()
@@ -47,8 +62,7 @@ void PlayTimerWindow::stopTimer()
 void PlayTimerWindow::updateTime()
 {
     playtime_sec++;
-    QTime t (playtime_sec/3600, (playtime_sec/60)%60, playtime_sec%60);
-    QString str = t.toString("HH:mm:ss");
+    QString str = secToString(playtime_sec);
     ui->timeEdit->setText(str);
     settings.setValue(detector.getTarget() + "/second", playtime_sec);
     qDebug() << str;
@@ -59,9 +73,14 @@ void PlayTimerWindow::changeName(QString name)
     settings.setValue("default/name", name);
     // restore time
     playtime_sec = settings.value(name+"/second", 0).toULongLong();
-    QTime t (playtime_sec/3600, (playtime_sec/60)%60, playtime_sec%60);
-    QString str = t.toString("HH:mm:ss");
+    QString str  = secToString(playtime_sec);
     ui->timeEdit->setText(str);
+}
+
+QString PlayTimerWindow::secToString(quint64 sec)
+{
+    QTime t (sec/3600, (sec/60)%60, sec%60);
+    return t.toString("HH:mm:ss");
 }
 
 void PlayTimerWindow::on_lineEdit_editingFinished()
@@ -69,3 +88,60 @@ void PlayTimerWindow::on_lineEdit_editingFinished()
     detector.setProcessName(ui->lineEdit->text());
 }
 
+void PlayTimerWindow::closeEvent(QCloseEvent *event)
+{
+    if (trayIcon->isVisible()) {
+        hide();
+        event->ignore();
+        //showMessage();
+    }
+}
+
+void PlayTimerWindow::iconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+    switch (reason) {
+    case QSystemTrayIcon::Trigger:
+    case QSystemTrayIcon::DoubleClick:
+    case QSystemTrayIcon::MiddleClick:
+        showMessage();
+        break;
+    default:
+        ;
+    }
+}
+
+void PlayTimerWindow::showMessage()
+{
+    trayIcon->showMessage(tr("PlayTime: ")+detector.getTarget(),
+                         secToString(playtime_sec),
+                         QSystemTrayIcon::Information,
+                         3000);
+}
+
+void PlayTimerWindow::messageClicked()
+{
+    show();
+}
+
+void PlayTimerWindow::createActions()
+{
+    quitAction = new QAction(tr("&Quit"), this);
+    connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
+    timeAction = new QAction(tr("&Time"), this);
+    connect(timeAction, SIGNAL(triggered()), this, SLOT(showMessage()));
+    openAction = new QAction(tr("&Open"), this);
+    connect(openAction, SIGNAL(triggered()), this, SLOT(show()));
+}
+
+void PlayTimerWindow::createTrayIcon()
+{
+    trayIconMenu = new QMenu(this);
+    trayIconMenu->addAction(timeAction);
+    trayIconMenu->addAction(openAction);
+    trayIconMenu->addSeparator();
+    trayIconMenu->addAction(quitAction);
+
+    trayIcon = new QSystemTrayIcon(this);
+    trayIcon->setIcon(QIcon(":/img/icon.svg"));
+    trayIcon->setContextMenu(trayIconMenu);
+}
