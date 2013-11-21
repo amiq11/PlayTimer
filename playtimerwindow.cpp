@@ -36,6 +36,7 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
 
     // start
     trayIcon->show();
+    showMessage();
     detector.start();
 }
 
@@ -115,7 +116,7 @@ void PlayTimerWindow::showMessage()
     trayIcon->showMessage(tr("PlayTime: ")+detector.getTarget(),
                          secToString(playtime_sec),
                          QSystemTrayIcon::Information,
-                         3000);
+                         1000);
 }
 
 void PlayTimerWindow::messageClicked()
