@@ -5,7 +5,6 @@
 PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::PlayTimerWindow),
-    detector(parent),
     timer(),
     playtime_sec(0),
     settings("amiq11", "playtimer")
@@ -15,17 +14,20 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     createTrayIcon();
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+
     connect(&timer, SIGNAL(timeout()), this, SLOT(updateTime()));
-    connect(&detector, SIGNAL(processStarted()), this, SLOT(startTimer()));
-    connect(&detector, SIGNAL(processStopped()), this, SLOT(stopTimer()));
-    connect(&detector, SIGNAL(processStarted()), this, SLOT(showMessage()));
-    connect(&detector, SIGNAL(processStopped()), this, SLOT(showMessage()));
-    connect(&detector, SIGNAL(targetChanged(QString)), ui->lineEdit, SLOT(setText(QString)));
-    connect(&detector, SIGNAL(targetChanged(QString)), this, SLOT(changeName(QString)));
+
+    detector = new ProcessDetector( this );
+    connect(detector, SIGNAL(processStarted()), this, SLOT(startTimer()));
+    connect(detector, SIGNAL(processStopped()), this, SLOT(stopTimer()));
+    connect(detector, SIGNAL(processStarted()), this, SLOT(showMessage()));
+    connect(detector, SIGNAL(processStopped()), this, SLOT(showMessage()));
+    connect(detector, SIGNAL(targetChanged(QString)), ui->lineEdit, SLOT(setText(QString)));
+    connect(detector, SIGNAL(targetChanged(QString)), this, SLOT(changeName(QString)));
 
     // restore name
     QString name = settings.value("default/name", "ffxiv.exe").toString();
-    detector.setProcessName(name);
+    detector->setProcessName(name);
     // restore time
     playtime_sec = settings.value(name+"/second", 0).toULongLong();
     QString str = secToString(playtime_sec);
@@ -36,12 +38,13 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     // start
     trayIcon->show();
     showMessage();
-    detector.start();
+    detector->start();
 }
 
 PlayTimerWindow::~PlayTimerWindow()
 {
     delete ui;
+    delete detector;
     delete openAction;
     delete timeAction;
     delete quitAction;
@@ -53,7 +56,7 @@ PlayTimerWindow::~PlayTimerWindow()
 void PlayTimerWindow::startTimer()
 {
     timer.start();
-    qDebug() << "start: " << detector.getTarget();
+    qDebug() << "start: " << detector->getTarget();
 }
 void PlayTimerWindow::stopTimer()
 {
@@ -64,7 +67,7 @@ void PlayTimerWindow::updateTime()
     playtime_sec++;
     QString str = secToString(playtime_sec);
     ui->timeEdit->setText(str);
-    settings.setValue(detector.getTarget() + "/second", playtime_sec);
+    settings.setValue(detector->getTarget() + "/second", playtime_sec);
     qDebug() << str;
 
 }
@@ -88,7 +91,7 @@ QString PlayTimerWindow::secToString(quint64 sec)
 
 void PlayTimerWindow::on_lineEdit_editingFinished()
 {
-    detector.setProcessName(ui->lineEdit->text());
+    detector->setProcessName(ui->lineEdit->text());
 }
 
 void PlayTimerWindow::closeEvent(QCloseEvent *event)
@@ -115,7 +118,7 @@ void PlayTimerWindow::iconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void PlayTimerWindow::showMessage()
 {
-    trayIcon->showMessage(tr("PlayTime: ")+detector.getTarget(),
+    trayIcon->showMessage(tr("PlayTime: ")+detector->getTarget(),
                          secToString(playtime_sec),
                          QSystemTrayIcon::Information,
                          1000);
@@ -145,6 +148,6 @@ void PlayTimerWindow::createTrayIcon()
     trayIconMenu->addAction(quitAction);
 
     trayIcon = new QSystemTrayIcon(this);
-    trayIcon->setIcon(QIcon(":/img/icon.svg"));
+    trayIcon->setIcon(QIcon(":/img/icon.png"));
     trayIcon->setContextMenu(trayIconMenu);
 }

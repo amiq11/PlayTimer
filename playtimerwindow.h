@@ -44,7 +44,7 @@ private:
     void createTrayIcon();
 
     Ui::PlayTimerWindow *ui;
-    ProcessDetector detector;
+    ProcessDetector *detector;
     QTimer timer;
     quint64 playtime_sec;
     QSettings settings;
