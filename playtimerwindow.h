@@ -39,6 +39,7 @@ private slots:
     void messageClicked();
 
 private:
+    QString currentTimeString();
     QString secToString(quint64 sec);
     void createActions();
     void createTrayIcon();
@@ -46,7 +47,8 @@ private:
     Ui::PlayTimerWindow *ui;
     ProcessDetector *detector;
     QTimer timer;
-    quint64 playtime_sec;
+    quint64 playtime_total_sec;
+    quint64 playtime_now_sec;
     QSettings settings;
 
     QSystemTrayIcon *trayIcon;

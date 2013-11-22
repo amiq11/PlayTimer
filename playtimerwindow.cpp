@@ -6,7 +6,8 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::PlayTimerWindow),
     timer(),
-    playtime_sec(0),
+    playtime_now_sec(0),
+    playtime_total_sec(0),
     settings("amiq11", "playtimer")
 {
     ui->setupUi(this);
@@ -29,9 +30,8 @@ PlayTimerWindow::PlayTimerWindow(QWidget *parent) :
     QString name = settings.value("default/name", "ffxiv.exe").toString();
     detector->setProcessName(name);
     // restore time
-    playtime_sec = settings.value(name+"/second", 0).toULongLong();
-    QString str = secToString(playtime_sec);
-    ui->timeEdit->setText(str);
+    playtime_total_sec = settings.value(name+"/second", 0).toULongLong();
+    ui->timeEdit->setText(currentTimeString());
     // timer settings
     timer.setInterval(1000);
 
@@ -50,11 +50,16 @@ PlayTimerWindow::~PlayTimerWindow()
     delete quitAction;
     delete trayIconMenu;
     delete trayIcon;
+}
 
+QString PlayTimerWindow::currentTimeString()
+{
+    return secToString(playtime_now_sec) + QString(" / ") + secToString(playtime_total_sec);
 }
 
 void PlayTimerWindow::startTimer()
 {
+    playtime_now_sec = 0;
     timer.start();
     qDebug() << "start: " << detector->getTarget();
 }
@@ -64,10 +69,11 @@ void PlayTimerWindow::stopTimer()
 }
 void PlayTimerWindow::updateTime()
 {
-    playtime_sec++;
-    QString str = secToString(playtime_sec);
+    playtime_now_sec++;
+    playtime_total_sec++;
+    QString str = currentTimeString();
     ui->timeEdit->setText(str);
-    settings.setValue(detector->getTarget() + "/second", playtime_sec);
+    settings.setValue(detector->getTarget() + "/second", playtime_total_sec);
     qDebug() << str;
 
 }
@@ -75,16 +81,16 @@ void PlayTimerWindow::changeName(QString name)
 {
     settings.setValue("default/name", name);
     // restore time
-    playtime_sec = settings.value(name+"/second", 0).toULongLong();
-    QString str  = secToString(playtime_sec);
-    ui->timeEdit->setText(str);
+    playtime_now_sec = 0;
+    playtime_total_sec = settings.value(name+"/second", 0).toULongLong();
+    ui->timeEdit->setText(currentTimeString());
 }
 
 QString PlayTimerWindow::secToString(quint64 sec)
 {
     //QTime t (sec/3600, (sec/60)%60, sec%60);
     return QString("%1:%2:%3")
-            .arg(sec/3600, 3, 10, QChar('0'))
+            .arg(sec/3600, 2, 10, QChar('0'))
             .arg((sec/60)%60, 2, 10, QChar('0'))
             .arg(sec%60, 2, 10, QChar('0'));
 }
@@ -119,9 +125,9 @@ void PlayTimerWindow::iconActivated(QSystemTrayIcon::ActivationReason reason)
 void PlayTimerWindow::showMessage()
 {
     trayIcon->showMessage(tr("PlayTime: ")+detector->getTarget(),
-                         secToString(playtime_sec),
-                         QSystemTrayIcon::Information,
-                         1000);
+                          currentTimeString(),
+                          QSystemTrayIcon::Information,
+                          1000);
 }
 
 void PlayTimerWindow::messageClicked()
